@@ -3,4 +3,6 @@ export const sharedQueries = `#graphql
     verifyGoogleToken(token: String!): String
     getCurrentUser: User
     getUserById(id: ID!): User
+
+    getSignedUrlForTweet(imageName: String!, imageType: String!): String
 `;
