@@ -59,6 +59,10 @@ const queries = {
         const foundUser = await db.user.findUnique({ where: { id } });
         return foundUser;
     },
+    getUserById: async (parent: any, { id }: { id: string }) => {
+        const foundUser = await db.user.findUnique({ where: { id } });
+        return foundUser;
+    }
 };
 
 const extraResolvers = {
