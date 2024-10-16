@@ -23,8 +23,38 @@ const queries = {
 
 const extraResolvers = {
     User: {
-        tweets: async (parent: User) => db.tweet.findMany({ where: { authorId: parent.id } })
+        tweets: async (parent: User) => db.tweet.findMany({ where: { authorId: parent.id } }),
+        followers: async (parent: User) => {
+            const followers = await db.follows.findMany({
+                where: { following: { id: parent.id } },
+                include: { follower: true },
+            });
+            return followers.map(f => f.follower);
+        },
+        following: async (parent: User) => {
+            const following = await db.follows.findMany({
+                where: { follower: { id: parent.id } },
+                include: { following: true },
+            });
+            return following.map(f => f.following);
+        }
+
     }
 }
 
-export const resolvers = { queries, extraResolvers };
+const mutations = {
+    followUser: async (parent: any, { to }: { to: string }, context: GraphQLContext) => {
+        const user = await context.user;
+        if (!user || !user?.id) throw new Error("Unauthorized");
+        await UserService.followUser(user?.id, to);
+        return true;
+    },
+    unfollowUser: async (parent: any, { to }: { to: string }, context: GraphQLContext) => {
+        const user = await context.user;
+        if (!user || !user?.id) throw new Error("Unauthorized");
+        await UserService.unfollowUser(user?.id, to);
+        return true;
+    },
+}
+
+export const resolvers = { queries, extraResolvers, mutations };
