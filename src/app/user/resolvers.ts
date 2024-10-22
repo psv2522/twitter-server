@@ -37,10 +37,43 @@ const extraResolvers = {
                 include: { following: true },
             });
             return following.map(f => f.following);
-        }
+        },
+        recommendedUsers: async (parent: User, _: any, ctx: GraphQLContext) => {
+            const user = await ctx.user;
+            if (!user) return [];
+            const myFollowing = await db.follows.findMany({
+                where: {
+                    follower: { id: user.id },
+                },
+                include: {
+                    following: {
+                        include: {
+                            followers: {
+                                include: {
+                                    following: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
+            console.log(myFollowing);
+
+            const users: User[] = []
+            for (const followings of myFollowing) {
+                for (const followingOfFollowedUser of followings.following.followers) {
+                    if (followingOfFollowedUser.following.id !== user.id &&
+                        myFollowing.findIndex(e => e.followingId === followingOfFollowedUser.following.id) < 0) {
+                        
+                        users.push(followingOfFollowedUser.following);
+                    }
+                }
+            }
+            return users;
+        },
     }
-}
+};
 
 const mutations = {
     followUser: async (parent: any, { to }: { to: string }, context: GraphQLContext) => {

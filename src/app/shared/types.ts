@@ -8,6 +8,8 @@ export const sharedTypes = `#graphql
 
         followers: [User]
         following: [User]
+
+        recommendedUsers: [User]
         tweets: [Tweet]
     }
 
