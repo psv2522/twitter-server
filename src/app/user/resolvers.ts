@@ -2,6 +2,7 @@ import { db } from "../../client/db";
 import UserService from "../../services/user";
 import { GraphQLContext } from "../../interfaces";
 import { User } from "@prisma/client";
+import { redisClient } from "../../client/redis";
 
 const queries = {
     verifyGoogleToken: async (parent: any, { token }: { token: string }) => {
@@ -41,6 +42,10 @@ const extraResolvers = {
         recommendedUsers: async (parent: User, _: any, ctx: GraphQLContext) => {
             const user = await ctx.user;
             if (!user) return [];
+
+            const cachedValue = await redisClient.get(`RECOMMEDED_USERS:${user.id}`);
+            if (cachedValue) return JSON.parse(cachedValue);
+
             const myFollowing = await db.follows.findMany({
                 where: {
                     follower: { id: user.id },
@@ -70,6 +75,8 @@ const extraResolvers = {
                     }
                 }
             }
+
+            await redisClient.set(`RECOMMEDED_USERS:${user.id}`, JSON.stringify(users));
             return users;
         },
     }
@@ -80,12 +87,14 @@ const mutations = {
         const user = await context.user;
         if (!user || !user?.id) throw new Error("Unauthorized");
         await UserService.followUser(user?.id, to);
+        await redisClient.del(`RECOMMEDED_USERS:${user.id}`);
         return true;
     },
     unfollowUser: async (parent: any, { to }: { to: string }, context: GraphQLContext) => {
         const user = await context.user;
         if (!user || !user?.id) throw new Error("Unauthorized");
         await UserService.unfollowUser(user?.id, to);
+        await redisClient.del(`RECOMMEDED_USERS:${user.id}`);
         return true;
     },
 }

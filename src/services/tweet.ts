@@ -1,4 +1,5 @@
 import { db } from "../client/db";
+import { redisClient } from "../client/redis";
 
 export interface CreateTweetPayload {
     content: string;
@@ -7,7 +8,8 @@ export interface CreateTweetPayload {
 }
 
 class TweetService {
-    public static async createTweet(data: CreateTweetPayload) {
+    public static async createTweet(data: CreateTweetPayload) { 
+        await redisClient.del("ALL_TWEETS");
         return db.tweet.create({
             data: {
                 content: data.content,
@@ -18,9 +20,13 @@ class TweetService {
     }
 
     public static async getAllTweets() {
-        return db.tweet.findMany({
+        const cachedTweets = await redisClient.get("ALL_TWEETS");
+        if (cachedTweets) return JSON.parse(cachedTweets);
+        const tweets =  db.tweet.findMany({
             orderBy: { createdAt: "desc" }
         });
+        await redisClient.set("ALL_TWEETS", JSON.stringify(tweets));
+        return tweets;
     }
 }
 
