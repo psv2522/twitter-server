@@ -9,14 +9,21 @@ export interface CreateTweetPayload {
 
 class TweetService {
     public static async createTweet(data: CreateTweetPayload) { 
-        await redisClient.del("ALL_TWEETS");
-        return db.tweet.create({
+        const rateLimitFlag = await redisClient.get(`RATE_LIMIT:TWEET:${data.userId}`);
+        if (rateLimitFlag) {
+            throw new Error("Please wait for 10 seconds before creating another tweet");
+        }
+        const tweet = db.tweet.create({
             data: {
                 content: data.content,
                 imageURL: data.imageURL,
                 author: { connect: { id: data.userId } }
             }
         });
+        await redisClient.setex(`RATE_LIMIT:TWEET:${data.userId}`, 60, "1");
+        await redisClient.del("ALL_TWEETS");
+
+        return tweet;
     }
 
     public static async getAllTweets() {
